@@ -30,4 +30,5 @@ func Log(keyword string, prefix int, message string) {
 	default:
 		logger.SetPrefix(keyword + " [WARNING]: ")
 	}
+	logger.Println(message)
 }

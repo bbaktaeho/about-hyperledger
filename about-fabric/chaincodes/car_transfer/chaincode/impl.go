@@ -18,12 +18,12 @@ import (
 //
 type CarTransferCC struct{}
 
-func (this *CarTransferCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (c *CarTransferCC) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	utils.Log("Init", 1, "init")
 	return shim.Success([]byte{})
 }
 
-func (this *CarTransferCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (c *CarTransferCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	//sample of API use: show tX timestamp
 	timestamp, err := stub.GetTxTimestamp()
 	if err != nil {
@@ -54,7 +54,7 @@ func (this *CarTransferCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response 
 			return shim.Error(mes)
 		}
 
-		err = this.AddOwner(stub, owner)
+		err = c.AddOwner(stub, owner)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -64,7 +64,7 @@ func (this *CarTransferCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response 
 
 		// lists Owners
 	case "ListOwners":
-		owners, err := this.ListOwners(stub)
+		owners, err := c.ListOwners(stub)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -92,7 +92,7 @@ func (this *CarTransferCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response 
 			return shim.Error(mes)
 		}
 
-		err = this.AddCar(stub, car)
+		err = c.AddCar(stub, car)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -102,7 +102,7 @@ func (this *CarTransferCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response 
 
 		// lists Cars
 	case "ListCars":
-		cars, err := this.ListCars(stub)
+		cars, err := c.ListCars(stub)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -126,7 +126,7 @@ func (this *CarTransferCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response 
 			return shim.Error(mes)
 		}
 
-		cars, err := this.ListOwnerIdCars(stub, owner)
+		cars, err := c.ListOwnerIdCars(stub, owner)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -156,7 +156,7 @@ func (this *CarTransferCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response 
 			return shim.Error(mes)
 		}
 
-		car, err := this.GetCar(stub, id)
+		car, err := c.GetCar(stub, id)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -186,7 +186,7 @@ func (this *CarTransferCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response 
 			return shim.Error(mes)
 		}
 
-		err = this.UpdateCar(stub, car)
+		err = c.UpdateCar(stub, car)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -221,7 +221,7 @@ func (this *CarTransferCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response 
 			return shim.Error(mes)
 		}
 
-		err = this.TransferCar(stub, carId, newOwnerId)
+		err = c.TransferCar(stub, carId, newOwnerId)
 		if err != nil {
 			return shim.Error(err.Error())
 		}
@@ -240,10 +240,10 @@ func (this *CarTransferCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response 
 //
 
 // Adds a new Owner
-func (this *CarTransferCC) AddOwner(stub shim.ChaincodeStubInterface, owner *cartransfer.Owner) error {
+func (c *CarTransferCC) AddOwner(stub shim.ChaincodeStubInterface, owner *cartransfer.Owner) error {
 
 	// checks if the specified Owner exists
-	found, err := this.CheckOwner(stub, owner.Id)
+	found, err := c.CheckOwner(stub, owner.Id)
 	if err != nil {
 		return err
 	}
@@ -275,7 +275,7 @@ func (this *CarTransferCC) AddOwner(stub shim.ChaincodeStubInterface, owner *car
 }
 
 // Checks existence of the specified Owner
-func (this *CarTransferCC) CheckOwner(stub shim.ChaincodeStubInterface, id string) (bool, error) {
+func (c *CarTransferCC) CheckOwner(stub shim.ChaincodeStubInterface, id string) (bool, error) {
 	// creates a composite key
 	key, err := stub.CreateCompositeKey("Owner", []string{id})
 	if err != nil {
@@ -293,14 +293,14 @@ func (this *CarTransferCC) CheckOwner(stub shim.ChaincodeStubInterface, id strin
 }
 
 // Lists Owners
-func (this *CarTransferCC) ListOwners(stub shim.ChaincodeStubInterface) ([]*cartransfer.Owner, error) {
+func (c *CarTransferCC) ListOwners(stub shim.ChaincodeStubInterface) ([]*cartransfer.Owner, error) {
 	// executes a range query, which returns an iterator
 	iter, err := stub.GetStateByPartialCompositeKey("Owner", []string{})
 	if err != nil {
 		return nil, err
 	}
 
-	// will close the iterator when returned from this method
+	// will close the iterator when returned from c method
 	defer iter.Close()
 	owners := []*cartransfer.Owner{}
 
@@ -318,6 +318,13 @@ func (this *CarTransferCC) ListOwners(stub shim.ChaincodeStubInterface) ([]*cart
 		owners = append(owners, owner)
 	}
 
+	var owners_string string
+	for _, owner := range owners {
+		b, _ := json.Marshal(owner)
+		owners_string += string(b)
+	}
+
+	utils.Log("ListOwners", 1, owners_string)
 	// returns successfully
 	if len(owners) > 1 {
 		utils.Log("ListOwners", 1, fmt.Sprintf("%d %s found", len(owners), inflection.Plural("Owner")))
@@ -328,7 +335,7 @@ func (this *CarTransferCC) ListOwners(stub shim.ChaincodeStubInterface) ([]*cart
 }
 
 // Adds a new Car
-func (this *CarTransferCC) AddCar(stub shim.ChaincodeStubInterface, car *cartransfer.Car) error {
+func (c *CarTransferCC) AddCar(stub shim.ChaincodeStubInterface, car *cartransfer.Car) error {
 	// creates a composite key
 	key, err := stub.CreateCompositeKey("Car", []string{car.Id})
 	if err != nil {
@@ -336,7 +343,7 @@ func (this *CarTransferCC) AddCar(stub shim.ChaincodeStubInterface, car *cartran
 	}
 
 	// checks if the specified Car exists
-	found, err := this.CheckCar(stub, car.Id)
+	found, err := c.CheckCar(stub, car.Id)
 	if err != nil {
 		return err
 	}
@@ -346,7 +353,7 @@ func (this *CarTransferCC) AddCar(stub shim.ChaincodeStubInterface, car *cartran
 	}
 
 	// validates the Car
-	ok, err := this.ValidateCar(stub, car)
+	ok, err := c.ValidateCar(stub, car)
 	if err != nil {
 		return err
 	}
@@ -372,7 +379,7 @@ func (this *CarTransferCC) AddCar(stub shim.ChaincodeStubInterface, car *cartran
 }
 
 // Checks existence of the specified Car
-func (this *CarTransferCC) CheckCar(stub shim.ChaincodeStubInterface, id string) (bool, error) {
+func (c *CarTransferCC) CheckCar(stub shim.ChaincodeStubInterface, id string) (bool, error) {
 
 	// creates a composite key
 	key, err := stub.CreateCompositeKey("Car", []string{id})
@@ -391,9 +398,9 @@ func (this *CarTransferCC) CheckCar(stub shim.ChaincodeStubInterface, id string)
 }
 
 // Validates the content of the specified Car
-func (this *CarTransferCC) ValidateCar(stub shim.ChaincodeStubInterface, car *cartransfer.Car) (bool, error) {
+func (c *CarTransferCC) ValidateCar(stub shim.ChaincodeStubInterface, car *cartransfer.Car) (bool, error) {
 	// checks existence of the Owner with the OwnerId
-	found, err := this.CheckOwner(stub, car.OwnerId)
+	found, err := c.CheckOwner(stub, car.OwnerId)
 	if err != nil {
 		return false, err
 	}
@@ -403,7 +410,7 @@ func (this *CarTransferCC) ValidateCar(stub shim.ChaincodeStubInterface, car *ca
 }
 
 // Gets the specified Car
-func (this *CarTransferCC) GetCar(stub shim.ChaincodeStubInterface, id string) (*cartransfer.Car, error) {
+func (c *CarTransferCC) GetCar(stub shim.ChaincodeStubInterface, id string) (*cartransfer.Car, error) {
 	// creates a composite key
 	key, err := stub.CreateCompositeKey("Car", []string{id})
 	if err != nil {
@@ -432,9 +439,9 @@ func (this *CarTransferCC) GetCar(stub shim.ChaincodeStubInterface, id string) (
 }
 
 // Updates the content of the specified Car
-func (this *CarTransferCC) UpdateCar(stub shim.ChaincodeStubInterface, car *cartransfer.Car) error {
+func (c *CarTransferCC) UpdateCar(stub shim.ChaincodeStubInterface, car *cartransfer.Car) error {
 	// checks existence of the specified Car
-	found, err := this.CheckCar(stub, car.Id)
+	found, err := c.CheckCar(stub, car.Id)
 	if err != nil {
 		return err
 	}
@@ -444,7 +451,7 @@ func (this *CarTransferCC) UpdateCar(stub shim.ChaincodeStubInterface, car *cart
 	}
 
 	// validates the Car
-	ok, err := this.ValidateCar(stub, car)
+	ok, err := c.ValidateCar(stub, car)
 	if err != nil {
 		return err
 	}
@@ -476,14 +483,14 @@ func (this *CarTransferCC) UpdateCar(stub shim.ChaincodeStubInterface, car *cart
 }
 
 // Lists Cars
-func (this *CarTransferCC) ListCars(stub shim.ChaincodeStubInterface) ([]*cartransfer.Car, error) {
+func (c *CarTransferCC) ListCars(stub shim.ChaincodeStubInterface) ([]*cartransfer.Car, error) {
 	// executes a range query, which returns an iterator
 	iter, err := stub.GetStateByPartialCompositeKey("Car", []string{})
 	if err != nil {
 		return nil, err
 	}
 
-	// will close the iterator when returned from this method
+	// will close the iterator when returned from c method
 	defer iter.Close()
 
 	// loops over the iterator
@@ -512,14 +519,14 @@ func (this *CarTransferCC) ListCars(stub shim.ChaincodeStubInterface) ([]*cartra
 }
 
 // Lists OwnerId Cars
-func (this *CarTransferCC) ListOwnerIdCars(stub shim.ChaincodeStubInterface, ownerId string) ([]*cartransfer.Car, error) {
+func (c *CarTransferCC) ListOwnerIdCars(stub shim.ChaincodeStubInterface, ownerId string) ([]*cartransfer.Car, error) {
 	// executes a range query, which returns an iterator
 	iter, err := stub.GetStateByPartialCompositeKey("Car", []string{})
 	if err != nil {
 		return nil, err
 	}
 
-	// will close the iterator when returned from this method
+	// will close the iterator when returned from c method
 	defer iter.Close()
 
 	// loops over the iterator
@@ -555,10 +562,10 @@ func (this *CarTransferCC) ListOwnerIdCars(stub shim.ChaincodeStubInterface, own
 }
 
 // Transfers the specified Car to the specified Owner
-func (this *CarTransferCC) TransferCar(stub shim.ChaincodeStubInterface, carId string, newOwnerId string) error {
+func (c *CarTransferCC) TransferCar(stub shim.ChaincodeStubInterface, carId string, newOwnerId string) error {
 
 	// gets the specified Car (err returned if it does not exist)
-	car, err := this.GetCar(stub, carId)
+	car, err := c.GetCar(stub, carId)
 	if err != nil {
 		return err
 	}
@@ -567,7 +574,7 @@ func (this *CarTransferCC) TransferCar(stub shim.ChaincodeStubInterface, carId s
 	car.OwnerId = newOwnerId
 
 	// stores the updated Car back to the State DB
-	err = this.UpdateCar(stub, car)
+	err = c.UpdateCar(stub, car)
 	if err != nil {
 		return err
 	}
